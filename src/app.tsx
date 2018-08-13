@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Login } from './pages/login'
 import { SignUp } from './pages/signup';
+import { Websites } from './pages/websites';
 import { createStackNavigator } from 'react-navigation';
 import { createStore, applyMiddleware } from 'redux';
 import { Provider, connect } from 'react-redux';
@@ -20,6 +21,7 @@ const store = createStore(reducer, applyMiddleware(axiosMiddleware(client)));
 const AppNavigator = createStackNavigator({
   Login: { screen: Login },
   SignUp: { screen: SignUp },
+  Websites: { screen: Websites}
 });
 
 export default class App extends React.Component {

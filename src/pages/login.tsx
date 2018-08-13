@@ -1,9 +1,12 @@
 import * as React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Platform, AlertIOS , Alert} from 'react-native';
 import { Button} from 'native-base'
 import * as t from 'tcomb-form-native';
 import { loginUser } from '../state/reducer';
 import { connect } from 'react-redux';
+import * as Keychain from 'react-native-keychain';
+import { LOGIN } from '../state/reducer';
+import FingerprintScanner from 'react-native-fingerprint-scanner';
 
 const LoginForm = t.form.Form;
 
@@ -15,11 +18,60 @@ const User = t.struct({
 class LoginFormPage extends React.Component {
   _form: any;
 
+  componentDidMount() {
+    Keychain.getGenericPassword().then((credentials) => {
+      if(credentials) {
+        this.enterFingerPrint();
+      }
+    }).catch((error) => {
+
+    })
+  }
+
+  enterFingerPrint() {
+    if (FingerprintScanner.isSensorAvailable()) {
+      if (Platform.OS === 'ios') {
+        FingerprintScanner
+        .authenticate({ description: 'Scan your fingerprint on the device scanner to continue' })
+        .then(() => {
+          AlertIOS.alert('Authenticated successfully');
+          this.props.navigation.navigate('Websites');
+        })
+        .catch((error) => {
+          console.log("error scanning", error);
+          AlertIOS.alert(error.message);
+        });
+      } else {
+        FingerprintScanner
+        .authenticate({ onAttempt:  this.handleAuthenticationAttempted })
+        .then(() => {
+          Alert.alert('Fingerprint Authentication', 'Authenticated successfully');
+          this.props.navigation.navigate('Websites');
+        })
+        .catch((error) => {
+          console.log(error.message);
+        });
+      }
+    }
+  }
+
+  handleAuthenticationAttempted = (error) => {
+    console.log(error.message);
+  };
+
+  componentWillUnmount() {
+    FingerprintScanner.release();
+  }
+
   handleSubmit = () => {
     var value = this._form.getValue();
     if (value) {
         this.props.loginUser(value).then((response) => {
-            console.log("response okay", response);
+            if (response.type == LOGIN.LOGIN_SUCCESS) {
+              Keychain.setGenericPassword("token", response.payload.data.token).then(() => {
+                this.props.navigation.navigate('Websites');
+              });
+            }
           })
           .catch((response) => {
             console.log("response bad", response);
@@ -41,9 +93,6 @@ class LoginFormPage extends React.Component {
           }
           {this.props.success !== undefined && !this.props.success &&
               <Text style={{color: 'red'}}>{this.props.error}</Text>
-          }
-          {this.props.success &&
-              <Text style={{color: 'blue'}}>User created!</Text>
           }
           <Text style={styles.signUpText} onPress={() => navigate('SignUp')}>Não possui Login? Fazer cadastro</Text>
         </View>
